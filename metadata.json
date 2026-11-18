@@ -1,0 +1,6 @@
+{
+  "name": "আমার হিসাব",
+  "description": "ব্যক্তিগত আয়-ব্যয়, দেনা-পাওনা, খাত, রসিদ ও হিসাব ব্যবস্থাপনার পূর্ণাঙ্গ বাংলা অ্যান্ড্রয়েড অ্যাপ।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

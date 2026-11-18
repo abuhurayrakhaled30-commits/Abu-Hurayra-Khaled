@@ -1,0 +1,140 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUserConfig(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.userName is string && data.userName.size() <= 80 &&
+             data.darkMode is bool &&
+             data.currencySymbol is string && data.currencySymbol.size() >= 1 && data.currencySymbol.size() <= 8 &&
+             data.monthlyBudget is number && data.monthlyBudget >= 0 && data.monthlyBudget <= 1000000000 &&
+             data.incomeCategories is list && data.incomeCategories.size() <= 40 &&
+             (data.incomeCategories.size() == 0 || data.incomeCategories[0] is string) &&
+             data.expenseCategories is list && data.expenseCategories.size() <= 40 &&
+             (data.expenseCategories.size() == 0 || data.expenseCategories[0] is string);
+    }
+
+    function isValidTransaction(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.txType in ['income', 'expense'] &&
+             data.amount is number && data.amount > 0 && data.amount <= 1000000000 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 60 &&
+             data.note is string && data.note.size() <= 300 &&
+             data.date is string && data.date.size() >= 10 && data.date.size() <= 20 &&
+             data.paymentMethod is string && data.paymentMethod.size() <= 40 &&
+             (!('receiptBase64' in data) || (data.receiptBase64 is string && data.receiptBase64.size() <= 350000));
+    }
+
+    function isValidDebt(data, userId) {
+      return data.userId is string && data.userId == userId &&
+             data.personName is string && data.personName.size() >= 1 && data.personName.size() <= 80 &&
+             data.phone is string && data.phone.size() <= 30 &&
+             data.debtType in ['gave', 'took'] &&
+             data.amount is number && data.amount > 0 && data.amount <= 1000000000 &&
+             data.paidAmount is number && data.paidAmount >= 0 && data.paidAmount <= 1000000000 &&
+             data.paidAmount <= data.amount &&
+             data.note is string && data.note.size() <= 300 &&
+             data.date is string && data.date.size() >= 10 && data.date.size() <= 20 &&
+             data.dueDate is string && data.dueDate.size() <= 20 &&
+             data.settled is bool;
+    }
+
+    match /users/{userId} {
+      allow read, write: if false;
+
+      match /settings/{configId} {
+        allow get: if isOwner(userId) && isValidId(configId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(configId) &&
+                         incoming().keys().hasAll(['userId', 'userName', 'darkMode', 'currencySymbol', 'monthlyBudget', 'incomeCategories', 'expenseCategories', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'userName', 'darkMode', 'currencySymbol', 'monthlyBudget', 'incomeCategories', 'expenseCategories', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidUserConfig(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(configId) &&
+                         isValidUserConfig(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['userName', 'darkMode', 'currencySymbol', 'monthlyBudget', 'incomeCategories', 'expenseCategories', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(configId);
+      }
+
+      match /transactions/{txId} {
+        allow get: if isOwner(userId) && isValidId(txId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(txId) &&
+                         incoming().keys().hasAll(['userId', 'txType', 'amount', 'category', 'note', 'date', 'paymentMethod', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'txType', 'amount', 'category', 'note', 'date', 'paymentMethod', 'receiptBase64', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidTransaction(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(txId) &&
+                         isValidTransaction(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['txType', 'amount', 'category', 'note', 'date', 'paymentMethod', 'receiptBase64', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(txId);
+      }
+
+      match /debts/{debtId} {
+        allow get: if isOwner(userId) && isValidId(debtId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) &&
+                         isValidId(debtId) &&
+                         incoming().keys().hasAll(['userId', 'personName', 'phone', 'debtType', 'amount', 'paidAmount', 'note', 'date', 'dueDate', 'settled', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['userId', 'personName', 'phone', 'debtType', 'amount', 'paidAmount', 'note', 'date', 'dueDate', 'settled', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidDebt(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(debtId) &&
+                         isValidDebt(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['personName', 'phone', 'debtType', 'amount', 'paidAmount', 'note', 'date', 'dueDate', 'settled', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(debtId);
+      }
+    }
+  }
+}

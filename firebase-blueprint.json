@@ -1,0 +1,213 @@
+{
+  "entities": {
+    "UserConfig": {
+      "title": "UserConfig",
+      "description": "User accounting configuration, theme preference, monthly budget, and custom categories.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase user UID."
+        },
+        "userName": {
+          "type": "string",
+          "description": "Display name for the user."
+        },
+        "darkMode": {
+          "type": "boolean",
+          "description": "Whether dark mode is enabled."
+        },
+        "currencySymbol": {
+          "type": "string",
+          "description": "Currency symbol, defaulting to ৳."
+        },
+        "monthlyBudget": {
+          "type": "number",
+          "description": "Optional monthly expense budget target."
+        },
+        "incomeCategories": {
+          "type": "array",
+          "description": "List of income category names."
+        },
+        "expenseCategories": {
+          "type": "array",
+          "description": "List of expense category names."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "userName",
+        "darkMode",
+        "currencySymbol",
+        "monthlyBudget",
+        "incomeCategories",
+        "expenseCategories",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Personal income or expense entry with optional compressed receipt image.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase user UID."
+        },
+        "txType": {
+          "type": "string",
+          "enum": ["income", "expense"],
+          "description": "Whether this entry is income or expense."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Positive monetary amount."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category name in Bangla or custom text."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional description or note."
+        },
+        "date": {
+          "type": "string",
+          "description": "ISO date string YYYY-MM-DD."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment method such as নগদ, বিকাশ, ব্যাংক."
+        },
+        "receiptBase64": {
+          "type": "string",
+          "description": "Optional compressed JPEG receipt image encoded as Base64."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "txType",
+        "amount",
+        "category",
+        "note",
+        "date",
+        "paymentMethod",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Debt": {
+      "title": "Debt",
+      "description": "Personal receivable (gave / পাওনা) or payable (took / দেনা) record.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated Firebase user UID."
+        },
+        "personName": {
+          "type": "string",
+          "description": "Name of the person or party."
+        },
+        "phone": {
+          "type": "string",
+          "description": "Optional phone number."
+        },
+        "debtType": {
+          "type": "string",
+          "enum": ["gave", "took"],
+          "description": "gave = পাওনা (receivable), took = দেনা (payable)."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Total debt or receivable amount."
+        },
+        "paidAmount": {
+          "type": "number",
+          "description": "Amount settled/paid so far."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional memo."
+        },
+        "date": {
+          "type": "string",
+          "description": "Record date YYYY-MM-DD."
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Optional due date YYYY-MM-DD."
+        },
+        "settled": {
+          "type": "boolean",
+          "description": "Whether the debt is fully settled."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp written via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "personName",
+        "phone",
+        "debtType",
+        "amount",
+        "paidAmount",
+        "note",
+        "date",
+        "dueDate",
+        "settled",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/settings/{configId}": {
+      "schema": {
+        "$ref": "#/entities/UserConfig"
+      },
+      "description": "Per-user configuration and custom categories document."
+    },
+    "/users/{userId}/transactions/{txId}": {
+      "schema": {
+        "$ref": "#/entities/Transaction"
+      },
+      "description": "Per-user income and expense transactions."
+    },
+    "/users/{userId}/debts/{debtId}": {
+      "schema": {
+        "$ref": "#/entities/Debt"
+      },
+      "description": "Per-user receivables and payables."
+    }
+  }
+}
